@@ -176,11 +176,11 @@
 }
 
 :root.dark .sidebar-skills-link {
-  @apply border-emerald-900/70 bg-[linear-gradient(135deg,_rgba(6,78,59,0.42),_rgba(24,24,27,0.96))] text-zinc-100 hover:border-emerald-700 hover:bg-emerald-950;
+  @apply border-zinc-800 bg-zinc-900/80 text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800;
 }
 
 :root.dark .sidebar-skills-link.is-active {
-  @apply border-emerald-700 bg-emerald-950/80 text-zinc-50;
+  @apply border-zinc-700 bg-zinc-800 text-zinc-50;
 }
 
 :root.dark .sidebar-search-toggle {
@@ -349,8 +349,20 @@
   @apply text-zinc-200;
 }
 
+:root.dark .sidebar-top-bar {
+  @apply border-zinc-800/80;
+}
+
+:root.dark .sidebar-brand-name {
+  @apply text-zinc-100;
+}
+
 :root.dark .sidebar-thread-controls-button {
-  @apply text-zinc-400 hover:border-zinc-600 hover:bg-zinc-800;
+  @apply text-zinc-400 hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200;
+}
+
+:root.dark .sidebar-thread-controls-button.is-active {
+  @apply border-zinc-700 bg-zinc-800 text-zinc-100;
 }
 
 :root.dark .new-thread-hero {

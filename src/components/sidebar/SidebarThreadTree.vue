@@ -35,16 +35,7 @@
             <template #left>
               <span class="thread-left-stack">
                 <span v-if="shouldShowThreadIndicator(thread)" class="thread-status-indicator" :data-state="getThreadState(thread)" />
-                <button
-                  class="thread-delete-button"
-                  type="button"
-                  :data-confirming="isInlineDeleteConfirming(thread.id)"
-                  :title="isInlineDeleteConfirming(thread.id) ? 'Confirm delete' : t('Delete thread')"
-                  @click.stop="onInlineDeleteClick(thread.id)"
-                >
-                  <span v-if="isInlineDeleteConfirming(thread.id)" class="thread-delete-confirm-label">Confirm</span>
-                  <IconTablerTrash v-else class="thread-icon" />
-                </button>
+                <span v-else class="thread-dot-icon" :class="{ 'is-active': thread.id === selectedThreadId }" />
               </span>
             </template>
             <button class="thread-main-button" type="button" @click.stop="onSelect(thread.id)">
@@ -92,6 +83,85 @@
       </ul>
     </section>
 
+    <!-- 1. CHRONOLOGICAL ALL CHATS VIEW -->
+    <section v-if="isChronologicalView" class="chats-full-view">
+      <p v-if="isSearchActive && globalThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
+      <p v-else-if="isLoading && globalThreads.length === 0" class="thread-tree-loading">{{ t('Loading threads...') }}</p>
+      <ul v-else class="thread-list thread-list-global">
+        <li
+          v-for="thread in globalThreads"
+          :key="thread.id"
+          class="thread-row-item"
+          :data-menu-open="isThreadMenuOpen(thread.id) ? 'true' : 'false'"
+        >
+          <SidebarMenuRow
+            class="thread-row"
+            :data-active="thread.id === selectedThreadId"
+            :data-pinned="isPinned(thread.id)"
+            :data-menu-open="isThreadMenuOpen(thread.id) ? 'true' : 'false'"
+            :force-right-hover="isThreadMenuOpen(thread.id)"
+            @click="onSelect(thread.id)"
+            @mouseleave="onThreadRowLeave(thread.id, $event)"
+            @contextmenu="onThreadRowContextMenu($event, thread.id)"
+          >
+            <template #left>
+              <span class="thread-left-stack">
+                <span
+                  v-if="shouldShowThreadIndicator(thread)"
+                  class="thread-status-indicator"
+                  :data-state="getThreadState(thread)"
+                />
+                <span v-else class="thread-dot-icon" :class="{ 'is-active': thread.id === selectedThreadId }" />
+              </span>
+            </template>
+            <button class="thread-main-button" type="button" @click.stop="onSelect(thread.id)">
+              <span class="thread-row-title-wrap">
+                <span class="thread-row-title-line">
+                  <span class="thread-row-title">{{ thread.title }}</span>
+                  <span v-if="thread.projectName" class="thread-row-project-pill">{{ thread.projectName }}</span>
+                  <IconTablerGitFork v-if="thread.hasWorktree" class="thread-row-worktree-icon" :title="t('Worktree thread')" />
+                  <span
+                    v-if="threadHasAutomation(thread.id)"
+                    class="thread-row-automation-chip"
+                    :title="threadAutomationTooltip(thread.id)"
+                  >
+                    <IconTablerBolt class="thread-row-automation-icon" />
+                    <span v-if="threadAutomationCount(thread.id) > 1" class="thread-row-automation-count">
+                      {{ threadAutomationCount(thread.id) }}
+                    </span>
+                  </span>
+                  <span
+                    v-if="thread.pendingRequestState"
+                    class="thread-row-request-chip"
+                    :data-state="thread.pendingRequestState"
+                  >
+                    {{ threadRequestLabel(thread) }}
+                  </span>
+                </span>
+              </span>
+            </button>
+            <template #right>
+              <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
+            </template>
+            <template #right-hover>
+              <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
+                <button
+                  class="thread-menu-trigger"
+                  type="button"
+                  title="thread_menu"
+                  @click.stop="toggleThreadMenu(thread.id)"
+                >
+                  <IconTablerDots class="thread-icon" />
+                </button>
+              </div>
+            </template>
+          </SidebarMenuRow>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 2. PROJECT WORKSPACES VIEW -->
+    <template v-else>
     <section class="projects-section">
       <SidebarMenuRow
         as="button"
@@ -186,90 +256,10 @@
 
       <p v-else-if="isLoading && groups.length === 0" class="thread-tree-loading">{{ t('Loading threads...') }}</p>
 
-      <ul v-else-if="isChronologicalView" class="thread-list thread-list-global">
-      <li
-        v-for="thread in globalThreads"
-        :key="thread.id"
-        class="thread-row-item"
-        :data-menu-open="isThreadMenuOpen(thread.id) ? 'true' : 'false'"
-      >
-        <SidebarMenuRow
-          class="thread-row"
-          :data-active="thread.id === selectedThreadId"
-          :data-pinned="isPinned(thread.id)"
-          :data-menu-open="isThreadMenuOpen(thread.id) ? 'true' : 'false'"
-          :force-right-hover="isThreadMenuOpen(thread.id)"
-          @click="onSelect(thread.id)"
-          @mouseleave="onThreadRowLeave(thread.id, $event)"
-          @contextmenu="onThreadRowContextMenu($event, thread.id)"
-        >
-          <template #left>
-            <span class="thread-left-stack">
-              <span
-                v-if="shouldShowThreadIndicator(thread)"
-                class="thread-status-indicator"
-                :data-state="getThreadState(thread)"
-              />
-              <button
-                class="thread-delete-button"
-                type="button"
-                :data-confirming="isInlineDeleteConfirming(thread.id)"
-                :title="isInlineDeleteConfirming(thread.id) ? 'Confirm delete' : t('Delete thread')"
-                @click.stop="onInlineDeleteClick(thread.id)"
-              >
-                <span v-if="isInlineDeleteConfirming(thread.id)" class="thread-delete-confirm-label">Confirm</span>
-                <IconTablerTrash v-else class="thread-icon" />
-              </button>
-            </span>
-          </template>
-          <button class="thread-main-button" type="button" @click.stop="onSelect(thread.id)">
-            <span class="thread-row-title-wrap">
-              <span class="thread-row-title-line">
-                <span class="thread-row-title">{{ thread.title }}</span>
-                <IconTablerGitFork v-if="thread.hasWorktree" class="thread-row-worktree-icon" :title="t('Worktree thread')" />
-                <span
-                  v-if="threadHasAutomation(thread.id)"
-                  class="thread-row-automation-chip"
-                  :title="threadAutomationTooltip(thread.id)"
-                >
-                  <IconTablerBolt class="thread-row-automation-icon" />
-                  <span v-if="threadAutomationCount(thread.id) > 1" class="thread-row-automation-count">
-                    {{ threadAutomationCount(thread.id) }}
-                  </span>
-                </span>
-                <span
-                  v-if="thread.pendingRequestState"
-                  class="thread-row-request-chip"
-                  :data-state="thread.pendingRequestState"
-                >
-                  {{ threadRequestLabel(thread) }}
-                </span>
-              </span>
-            </span>
-          </button>
-          <template #right>
-            <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
-          </template>
-          <template #right-hover>
-            <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
-              <button
-                class="thread-menu-trigger"
-                type="button"
-                title="thread_menu"
-                @click.stop="toggleThreadMenu(thread.id)"
-              >
-                <IconTablerDots class="thread-icon" />
-              </button>
-            </div>
-          </template>
-        </SidebarMenuRow>
-      </li>
-    </ul>
-
-    <div v-else ref="groupsContainerRef" class="thread-tree-groups" :style="groupsContainerStyle">
-      <article
-        v-for="group in filteredGroups"
-        :key="group.projectName"
+      <div v-else ref="groupsContainerRef" class="thread-tree-groups" :style="groupsContainerStyle">
+        <article
+          v-for="group in filteredGroups"
+          :key="group.projectName"
         :ref="(el) => setProjectGroupRef(group.projectName, el)"
         class="project-group"
         :data-project-name="group.projectName"
@@ -391,7 +381,8 @@
             </template>
           </SidebarMenuRow>
 
-          <ul v-if="hasThreads(group)" class="thread-list">
+          <template v-if="!isCollapsed(group.projectName)">
+            <ul v-if="hasThreads(group)" class="thread-list">
             <li
               v-for="thread in visibleThreads(group)"
               :key="thread.id"
@@ -415,16 +406,7 @@
                       class="thread-status-indicator"
                       :data-state="getThreadState(thread)"
                     />
-                    <button
-                      class="thread-delete-button"
-                      type="button"
-                      :data-confirming="isInlineDeleteConfirming(thread.id)"
-                      :title="isInlineDeleteConfirming(thread.id) ? 'Confirm delete' : t('Delete thread')"
-                      @click.stop="onInlineDeleteClick(thread.id)"
-                    >
-                      <span v-if="isInlineDeleteConfirming(thread.id)" class="thread-delete-confirm-label">Confirm</span>
-                      <IconTablerTrash v-else class="thread-icon" />
-                    </button>
+                    <span v-else class="thread-dot-icon" :class="{ 'is-active': thread.id === selectedThreadId }" />
                   </span>
                 </template>
                 <button class="thread-main-button" type="button" @click.stop="onSelect(thread.id)">
@@ -486,6 +468,7 @@
               {{ isExpanded(group.projectName) ? 'Show less' : 'Show more' }}
             </button>
           </SidebarMenuRow>
+          </template>
       </article>
     </div>
       </template>
@@ -544,16 +527,7 @@
                   class="thread-status-indicator"
                   :data-state="getThreadState(thread)"
                 />
-                <button
-                  class="thread-delete-button"
-                  type="button"
-                  :data-confirming="isInlineDeleteConfirming(thread.id)"
-                  :title="isInlineDeleteConfirming(thread.id) ? 'Confirm delete' : t('Delete thread')"
-                  @click.stop="onInlineDeleteClick(thread.id)"
-                >
-                  <span v-if="isInlineDeleteConfirming(thread.id)" class="thread-delete-confirm-label">Confirm</span>
-                  <IconTablerTrash v-else class="thread-icon" />
-                </button>
+                <span v-else class="thread-dot-icon" :class="{ 'is-active': thread.id === selectedThreadId }" />
               </span>
             </template>
             <button class="thread-main-button" type="button" @click.stop="onSelect(thread.id)">
@@ -609,6 +583,7 @@
         </button>
       </SidebarMenuRow>
     </section>
+    </template>
 
     <Teleport to="body">
       <div
@@ -1261,24 +1236,40 @@ function threadMatchesSearch(thread: UiThread): boolean {
     return matchedThreadIdSet.value.has(thread.id)
   }
   const q = normalizedSearchQuery.value
-  return thread.title.toLowerCase().includes(q) || thread.preview.toLowerCase().includes(q)
+  const title = typeof thread.title === 'string' ? thread.title.toLowerCase() : ''
+  const preview = typeof thread.preview === 'string' ? thread.preview.toLowerCase() : ''
+  return title.includes(q) || preview.includes(q)
 }
 
 const filteredGroups = computed<UiProjectGroup[]>(() => {
-  return props.groups.flatMap((group) => {
-    const threads = group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread))
-    if (threads.length > 0) return [{ ...group, threads }]
-    return !isSearchActive.value && group.threads.length === 0 ? [{ ...group, threads }] : []
-  })
+  return props.groups
+    .map((group) => ({
+      ...group,
+      threads: group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread)),
+    }))
+    .filter((group) => {
+      if (group.threads.length > 0) return true
+      if (isSearchActive.value) return false
+      const cwd = props.projectCwdByName[group.projectName] || ''
+      if (cwd && !isProjectlessChatPath(cwd)) return true
+      const originalGroup = props.groups.find((g) => g.projectName === group.projectName)
+      if (originalGroup && originalGroup.threads.length === 0) {
+        return !isProjectlessChatPath(group.projectName)
+      }
+      return false
+    })
 })
 
 const isChronologicalView = computed(() => threadViewMode.value === 'chronological')
 
 const globalThreads = computed<UiThread[]>(() => {
   const rows: UiThread[] = []
+  const seenIds = new Set<string>()
 
   for (const group of props.groups) {
     for (const thread of group.threads) {
+      if (seenIds.has(thread.id)) continue
+      seenIds.add(thread.id)
       if (pinnedThreadIdSet.value.has(thread.id)) continue
       if (!threadMatchesSearch(thread)) continue
       rows.push(thread)
@@ -1418,7 +1409,15 @@ const threadProjectNameById = computed(() => {
 const unpinnedThreadsByProjectName = computed(() => {
   const map = new Map<string, UiThread[]>()
   for (const group of props.groups) {
-    const rows = group.threads.filter((thread) => !pinnedThreadIdSet.value.has(thread.id) && !optimisticallyArchivedThreadIdSet.value.has(thread.id))
+    const seenIds = new Set<string>()
+    const rows = group.threads.filter(
+      (thread) =>
+        !seenIds.has(thread.id) &&
+        Boolean(seenIds.add(thread.id)) &&
+        !isProjectlessChatPath(thread.cwd) &&
+        !pinnedThreadIdSet.value.has(thread.id) &&
+        !optimisticallyArchivedThreadIdSet.value.has(thread.id)
+    )
     map.set(group.projectName, rows)
   }
   return map
@@ -1469,7 +1468,7 @@ const projectedDropProjectIndex = computed<number | null>(() => {
 })
 
 const layoutProjectOrder = computed<string[]>(() => {
-  const sourceGroups = isSearchActive.value ? filteredGroups.value : props.groups
+  const sourceGroups = filteredGroups.value
   const names = sourceGroups.map((group) => group.projectName)
   const drag = activeProjectDrag.value
   const projectedIndex = projectedDropProjectIndex.value
@@ -1500,6 +1499,9 @@ const layoutTopByProject = computed<Record<string, number>>(() => {
 })
 
 const groupsContainerStyle = computed<Record<string, string>>(() => {
+  if (!activeProjectDrag.value) {
+    return {}
+  }
   let totalHeight = 0
   for (const projectName of layoutProjectOrder.value) {
     totalHeight += getProjectOuterHeight(projectName)
@@ -1507,6 +1509,7 @@ const groupsContainerStyle = computed<Record<string, string>>(() => {
 
   return {
     height: `${Math.max(0, totalHeight)}px`,
+    position: 'relative',
   }
 })
 
@@ -2389,9 +2392,27 @@ function toggleProjectCollapse(projectName: string): void {
     return
   }
 
+  const willBeCollapsed = !isCollapsed(projectName)
   collapsedProjects.value = {
     ...collapsedProjects.value,
-    [projectName]: !isCollapsed(projectName),
+    [projectName]: willBeCollapsed,
+  }
+
+  if (willBeCollapsed) {
+    const el = projectGroupElementByName.get(projectName)
+    const headerEl = el?.querySelector('.project-header-row') as HTMLElement | null
+    const headerHeight = headerEl ? Math.round(headerEl.getBoundingClientRect().height) : 28
+    measuredHeightByProject.value = {
+      ...measuredHeightByProject.value,
+      [projectName]: headerHeight || 28,
+    }
+  } else {
+    nextTick(() => {
+      const el = projectGroupElementByName.get(projectName)
+      if (el) {
+        updateMeasuredProjectHeight(projectName, el)
+      }
+    })
   }
 }
 
@@ -2862,6 +2883,15 @@ function isDraggingProject(projectName: string): boolean {
 
 function projectGroupStyle(projectName: string): Record<string, string> | undefined {
   const drag = activeProjectDrag.value
+  if (!drag) {
+    const openThreadMenuProjectName = openThreadMenuId.value
+      ? (threadProjectNameById.value.get(openThreadMenuId.value) ?? '')
+      : ''
+    const shouldElevateForMenu =
+      openProjectMenuId.value === projectName || openThreadMenuProjectName === projectName
+    return shouldElevateForMenu ? { position: 'relative', zIndex: '40' } : undefined
+  }
+
   const targetTop = layoutTopByProject.value[projectName] ?? 0
   const openThreadMenuProjectName = openThreadMenuId.value
     ? (threadProjectNameById.value.get(openThreadMenuId.value) ?? '')
@@ -2869,7 +2899,7 @@ function projectGroupStyle(projectName: string): Record<string, string> | undefi
   const shouldElevateForMenu =
     openProjectMenuId.value === projectName || openThreadMenuProjectName === projectName
 
-  if (!drag || drag.projectName !== projectName) {
+  if (drag.projectName !== projectName) {
     return {
       position: 'absolute',
       top: '0',
@@ -3010,6 +3040,30 @@ onBeforeUnmount(() => {
 
 .thread-tree-root {
   @apply flex flex-col;
+}
+
+.sidebar-view-switcher {
+  @apply flex items-center p-0.5 mb-2.5 rounded-lg bg-zinc-200/80 dark:bg-zinc-800/80;
+}
+
+.sidebar-view-tab {
+  @apply flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition cursor-pointer;
+}
+
+.sidebar-view-tab.is-active {
+  @apply bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs;
+}
+
+.sidebar-tab-icon {
+  @apply text-xs leading-none;
+}
+
+.sidebar-tab-badge {
+  @apply text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400;
+}
+
+.thread-row-project-pill {
+  @apply ml-1.5 inline-block text-[10px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800/90 px-1.5 py-0.5 rounded border border-zinc-300/40 dark:border-zinc-700/50 truncate max-w-[85px];
 }
 
 .pinned-section {
@@ -3268,6 +3322,14 @@ onBeforeUnmount(() => {
 
 .thread-status-indicator {
   @apply w-2.5 h-2.5 rounded-full;
+}
+
+.thread-dot-icon {
+  @apply w-1.5 h-1.5 rounded-full bg-zinc-600/70 transition-all;
+}
+
+.thread-dot-icon.is-active {
+  @apply bg-blue-500 scale-125 shadow-sm;
 }
 
 .thread-row-time {

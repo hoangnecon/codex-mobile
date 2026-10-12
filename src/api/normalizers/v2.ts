@@ -603,7 +603,10 @@ export function normalizeThreadSummaryV2(payload: ThreadReadResponse): UiThread 
 
 function groupThreadsByProject(threads: UiThread[]): UiProjectGroup[] {
   const grouped = new Map<string, UiThread[]>()
+  const seenIds = new Set<string>()
   for (const thread of threads) {
+    if (seenIds.has(thread.id)) continue
+    seenIds.add(thread.id)
     const rows = grouped.get(thread.projectName)
     if (rows) rows.push(thread)
     else grouped.set(thread.projectName, [thread])

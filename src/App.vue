@@ -7,28 +7,43 @@
           class="sidebar-scrollable"
           @scroll="onSidebarScroll"
         >
-          <SidebarThreadControls
-            v-if="!isSidebarCollapsed"
-            class="sidebar-thread-controls-host"
-            :is-sidebar-collapsed="isSidebarCollapsed"
-            :show-new-thread-button="true"
-            @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
-            @start-new-thread="onStartNewThreadFromToolbar"
-          >
-            <button
-              class="sidebar-search-toggle"
-              type="button"
-              :aria-pressed="isSidebarSearchVisible"
-              :aria-label="t('Search threads')"
-              :title="t('Search threads')"
-              @click="toggleSidebarSearch"
-            >
-              <IconTablerSearch class="sidebar-search-toggle-icon" />
-            </button>
-          </SidebarThreadControls>
+          <!-- Modern Clean Sidebar Top Header -->
+          <div v-if="!isSidebarCollapsed" class="sidebar-top-bar">
+            <div class="sidebar-brand-badge-wrap">
+              <span class="sidebar-brand-name">Codex</span>
+            </div>
+            <div class="sidebar-top-actions">
+              <button
+                class="sidebar-thread-controls-button"
+                type="button"
+                :title="t('Start new thread')"
+                @click="onStartNewThreadFromToolbar"
+              >
+                <IconTablerFilePencil class="w-4 h-4" />
+              </button>
+              <button
+                class="sidebar-thread-controls-button"
+                :class="{ 'is-active': isSidebarSearchVisible }"
+                type="button"
+                :title="t('Search threads')"
+                @click="toggleSidebarSearch"
+              >
+                <IconTablerSearch class="w-4 h-4" />
+              </button>
+              <button
+                class="sidebar-thread-controls-button"
+                type="button"
+                :title="t('Collapse sidebar')"
+                @click="setSidebarCollapsed(true)"
+              >
+                <IconTablerLayoutSidebar class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-          <div v-if="!isSidebarCollapsed && isSidebarSearchVisible" class="sidebar-search-bar">
-            <IconTablerSearch class="sidebar-search-bar-icon" />
+          <!-- Minimalist Search Input -->
+          <div v-if="!isSidebarCollapsed && isSidebarSearchVisible" class="sidebar-modern-search">
+            <IconTablerSearch class="sidebar-search-icon" />
             <input
               ref="sidebarSearchInputRef"
               v-model="sidebarSearchQuery"
@@ -44,41 +59,52 @@
               :aria-label="t('Clear search')"
               @click="clearSidebarSearch"
             >
-              <IconTablerX class="sidebar-search-clear-icon" />
+              <IconTablerX class="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <button
-            v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
-            :class="{ 'is-active': isSkillsRoute }"
-            type="button"
-            @click="router.push({ name: 'skills' }); isMobile && setSidebarCollapsed(true)"
-          >
-            <span class="sidebar-skills-link-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('Skills') }}</span>
-              <span class="sidebar-skills-link-subtitle">{{ t('Plugins, apps, MCPs') }}</span>
-            </span>
-          </button>
+          <!-- Professional Vertical Quick Nav (Chats, Skills, Automations) -->
+          <div v-if="!isSidebarCollapsed" class="sidebar-nav-stack">
+            <button
+              class="sidebar-nav-item"
+              :class="{ 'is-active': !isSkillsRoute && !isAutomationsRoute }"
+              type="button"
+              @click="router.push({ name: 'home' }); isMobile && setSidebarCollapsed(true)"
+            >
+              <span class="sidebar-nav-item-main">
+                <IconTablerMessage class="sidebar-nav-item-icon" />
+                <span class="sidebar-nav-item-label">{{ t('Chats') }}</span>
+              </span>
+              <span v-if="allThreadsCount > 0" class="sidebar-nav-item-badge">{{ allThreadsCount }}</span>
+            </button>
 
-          <button
-            v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
-            :class="{ 'is-active': isAutomationsRoute }"
-            type="button"
-            @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
-          >
-            <span class="sidebar-skills-link-icon sidebar-automations-link-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('Automations') }}</span>
-              <span class="sidebar-skills-link-subtitle">{{ t('Scheduled work') }}</span>
-            </span>
-          </button>
+            <button
+              class="sidebar-nav-item"
+              :class="{ 'is-active': isSkillsRoute }"
+              type="button"
+              @click="router.push({ name: 'skills' }); isMobile && setSidebarCollapsed(true)"
+            >
+              <span class="sidebar-nav-item-main">
+                <IconTablerBolt class="sidebar-nav-item-icon" />
+                <span class="sidebar-nav-item-label">{{ t('Skills') }}</span>
+              </span>
+              <span v-if="installedSkills.length" class="sidebar-nav-item-badge">{{ installedSkills.length }}</span>
+            </button>
+
+            <button
+              class="sidebar-nav-item"
+              :class="{ 'is-active': isAutomationsRoute }"
+              type="button"
+              @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
+            >
+              <span class="sidebar-nav-item-main">
+                <IconTablerClock class="sidebar-nav-item-icon" />
+                <span class="sidebar-nav-item-label">{{ t('Automations') }}</span>
+              </span>
+            </button>
+          </div>
+
+          <div v-if="!isSidebarCollapsed" class="sidebar-nav-divider" />
 
           <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
@@ -1205,6 +1231,10 @@ import HeaderGitBranchDropdown from './components/content/HeaderGitBranchDropdow
 import ComposerRuntimeDropdown from './components/content/ComposerRuntimeDropdown.vue'
 import SidebarThreadControls from './components/sidebar/SidebarThreadControls.vue'
 import IconTablerBolt from './components/icons/IconTablerBolt.vue'
+import IconTablerFilePencil from './components/icons/IconTablerFilePencil.vue'
+import IconTablerLayoutSidebar from './components/icons/IconTablerLayoutSidebar.vue'
+import IconTablerMessage from './components/icons/IconTablerMessage.vue'
+import IconTablerClock from './components/icons/IconTablerClock.vue'
 import IconTablerSearch from './components/icons/IconTablerSearch.vue'
 import IconTablerTarget from './components/icons/IconTablerTarget.vue'
 import IconTablerSettings from './components/icons/IconTablerSettings.vue'
@@ -1760,6 +1790,13 @@ const routeThreadId = computed(() => {
 const isHomeRoute = computed(() => route.name === 'home')
 const isSkillsRoute = computed(() => route.name === 'skills')
 const isAutomationsRoute = computed(() => route.name === 'automations')
+const allThreadsCount = computed(() => {
+  let count = 0
+  for (const group of projectGroups.value) {
+    count += group.threads.length
+  }
+  return count
+})
 const routeAutomationId = computed(() => {
   const raw = route.query.automationId
   return typeof raw === 'string' ? raw : ''
@@ -5106,68 +5143,72 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
   @apply mt-1 -translate-y-px px-2 pb-1;
 }
 
-.sidebar-search-toggle {
-  @apply h-6.75 w-6.75 rounded-md border border-transparent bg-transparent text-zinc-600 flex items-center justify-center transition hover:border-zinc-200 hover:bg-zinc-50;
+.sidebar-top-bar {
+  @apply flex items-center justify-between px-2 pt-1 pb-2 border-b border-zinc-200 mb-2;
 }
 
-.sidebar-search-toggle[aria-pressed='true'] {
-  @apply border-zinc-300 bg-zinc-100 text-zinc-700;
+.sidebar-brand-badge-wrap {
+  @apply flex items-center gap-2;
 }
 
-.sidebar-search-toggle-icon {
-  @apply w-4 h-4;
+.sidebar-brand-name {
+  @apply text-base font-semibold tracking-tight text-zinc-900;
 }
 
-.sidebar-search-bar {
-  @apply flex items-center gap-1.5 mx-2 px-2 py-1 rounded-md border border-zinc-200 bg-white transition-colors focus-within:border-zinc-400;
+.sidebar-top-actions {
+  @apply flex items-center gap-1;
 }
 
-.sidebar-search-bar-icon {
-  @apply w-3.5 h-3.5 text-zinc-400 shrink-0;
+.sidebar-modern-search {
+  @apply flex items-center gap-2 px-2.5 py-1.5 mx-1 mb-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 transition-all focus-within:border-blue-500;
+}
+
+.sidebar-search-icon {
+  @apply w-4 h-4 text-zinc-400 shrink-0;
 }
 
 .sidebar-search-input {
-  @apply flex-1 min-w-0 bg-transparent text-sm text-zinc-800 placeholder-zinc-400 outline-none border-none p-0;
+  @apply flex-1 min-w-0 bg-transparent text-sm text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 outline-none border-none p-0;
 }
 
 .sidebar-search-clear {
-  @apply w-4 h-4 rounded text-zinc-400 flex items-center justify-center transition hover:text-zinc-600;
+  @apply w-4 h-4 rounded text-zinc-400 flex items-center justify-center transition hover:text-zinc-600 dark:hover:text-zinc-200;
 }
 
-.sidebar-search-clear-icon {
-  @apply w-3.5 h-3.5;
+.sidebar-nav-stack {
+  @apply flex flex-col gap-0.5 px-1.5 mb-1.5;
 }
 
-.sidebar-skills-link {
-  @apply mx-2 flex items-center gap-3 rounded-2xl border border-transparent bg-transparent px-3 py-2.5 text-left text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950 cursor-pointer;
+.sidebar-nav-item {
+  @apply flex items-center justify-between w-full px-2.5 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/70 hover:text-zinc-900 dark:hover:text-zinc-200 transition cursor-pointer;
 }
 
-.sidebar-skills-link.is-active {
-  @apply border-transparent bg-zinc-100 text-zinc-950;
+.sidebar-nav-item.is-active {
+  @apply bg-zinc-200/90 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs;
 }
 
-.sidebar-skills-link-icon {
-  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white;
+.sidebar-nav-item-main {
+  @apply flex items-center gap-2 min-w-0;
 }
 
-.sidebar-automations-link-icon {
-  @apply bg-amber-500;
+.sidebar-nav-item-icon {
+  @apply w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400;
 }
 
-.sidebar-skills-link-icon :deep(svg) {
-  @apply h-5 w-5;
+.sidebar-nav-item.is-active .sidebar-nav-item-icon {
+  @apply text-zinc-900 dark:text-zinc-100;
 }
 
-.sidebar-skills-link-copy {
-  @apply flex min-w-0 flex-col;
+.sidebar-nav-item-label {
+  @apply truncate;
 }
 
-.sidebar-skills-link-title {
-  @apply truncate text-sm font-semibold leading-5 tracking-[-0.01em];
+.sidebar-nav-item-badge {
+  @apply text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-300 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-mono;
 }
 
-.sidebar-skills-link-subtitle {
-  @apply truncate text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500;
+.sidebar-nav-divider {
+  @apply mx-2 mb-2 border-t border-zinc-200/60 dark:border-zinc-800/80;
 }
 
 .sidebar-thread-controls-header-host {
@@ -5175,11 +5216,11 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .skills-route-header-icon {
-  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_16px_32px_-20px_rgba(5,150,105,0.9)];
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-zinc-100 border border-zinc-700;
 }
 
 .automations-route-header-icon {
-  @apply bg-amber-500 shadow-[0_16px_32px_-20px_rgba(245,158,11,0.9)];
+  @apply bg-zinc-800 text-zinc-100 border border-zinc-700;
 }
 
 .skills-route-header-icon :deep(svg) {
@@ -5457,7 +5498,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .new-thread-launch-card {
-  @apply mt-4 w-full max-w-3xl rounded-[28px] border border-emerald-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_42%),linear-gradient(135deg,_#f4fff8,_#ffffff_58%)] px-5 py-5 text-left shadow-[0_18px_50px_-28px_rgba(5,150,105,0.45)];
+  @apply mt-4 w-full max-w-3xl rounded-2xl border border-zinc-200 bg-white px-5 py-5 text-left shadow-sm;
 }
 
 .new-thread-launch-card-copy {
@@ -5469,7 +5510,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .new-thread-launch-card-badge {
-  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-[0_12px_28px_-18px_rgba(5,150,105,0.9)];
+  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-zinc-100;
 }
 
 .new-thread-launch-card-badge :deep(svg) {
@@ -5477,7 +5518,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .new-thread-launch-card-eyebrow {
-  @apply m-0 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700;
+  @apply m-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500;
 }
 
 .new-thread-launch-card-title {
@@ -5497,7 +5538,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .new-thread-launch-card-pill {
-  @apply inline-flex items-center rounded-full border border-emerald-100 bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700;
+  @apply inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-600;
 }
 
 .new-thread-launch-card-button {
@@ -5505,19 +5546,19 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .new-thread-launch-card-button-primary {
-  @apply border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600;
+  @apply border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800;
 }
 
 :global(:root.dark) .new-thread-launch-card {
-  @apply border-emerald-900/80 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_38%),linear-gradient(135deg,_rgba(6,78,59,0.32),_rgba(24,24,27,0.96)_58%)] shadow-[0_24px_64px_-34px_rgba(16,185,129,0.35)];
+  @apply border-zinc-800 bg-zinc-900/90 shadow-sm;
 }
 
 :global(:root.dark) .new-thread-launch-card-eyebrow {
-  @apply text-emerald-300;
+  @apply text-zinc-400;
 }
 
 :global(:root.dark) .new-thread-launch-card-badge {
-  @apply bg-emerald-500 text-white;
+  @apply bg-zinc-800 text-zinc-100 border border-zinc-700;
 }
 
 :global(:root.dark) .new-thread-launch-card-title {
