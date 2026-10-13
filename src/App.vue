@@ -5136,7 +5136,6 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 .content-root.is-virtual-keyboard-open {
   height: var(--visual-viewport-height);
   max-height: var(--visual-viewport-height);
-  transform: translateY(var(--visual-viewport-offset-top));
 }
 
 .sidebar-thread-controls-host {

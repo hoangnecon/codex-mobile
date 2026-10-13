@@ -18,3 +18,4 @@ server-go/codex-server
 server-go/dist/
 server-go/dist
 server-go/internal/static/dist/
+*.log

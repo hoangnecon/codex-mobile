@@ -36,7 +36,8 @@
               :class="[commandStatusClass(message), { 'cmd-expanded': isCommandGroupExpanded(message) }]"
               @click="toggleCommandGroup(message)"
             >
-              <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandGroupExpanded(message) }">▶</span>
+              <IconTablerChevronRight class="cmd-chevron-icon transition-transform duration-200" :class="{ 'rotate-90': isCommandGroupExpanded(message) }" />
+              <IconTablerTerminal class="cmd-terminal-icon" />
               <span class="cmd-group-label">{{ commandGroupSummaryLabel(message) }}</span>
               <span class="cmd-status">{{ commandGroupSummaryStatus(message) }}</span>
             </button>
@@ -63,7 +64,8 @@
                     ]"
                     @click="toggleCommandExpand(cmd)"
                   >
-                    <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(cmd) }">▶</span>
+                    <IconTablerChevronRight class="cmd-chevron-icon transition-transform duration-200" :class="{ 'rotate-90': isCommandExpanded(cmd) }" />
+                    <IconTablerTerminal class="cmd-terminal-icon" />
                     <code class="cmd-label">{{ cmd.commandExecution?.command || '(command)' }}</code>
                     <span class="cmd-status">{{ commandStatusLabel(cmd) }}</span>
                   </button>
@@ -72,6 +74,19 @@
                     :class="{ 'cmd-output-visible': isCommandExpanded(cmd) }"
                   >
                     <div class="cmd-output-inner">
+                      <div class="cmd-output-header">
+                        <span class="cmd-output-header-title">Output</span>
+                        <button
+                          type="button"
+                          class="cmd-output-copy-btn"
+                          :title="copiedCodeBlockKey === `cmd:${cmd.id}` ? 'Copied' : 'Copy output'"
+                          @click.stop="copyCodeBlock(cmd.commandExecution?.aggregatedOutput || '', `cmd:${cmd.id}`)"
+                        >
+                          <IconTablerCheck v-if="copiedCodeBlockKey === `cmd:${cmd.id}`" class="w-3.5 h-3.5 text-emerald-400" />
+                          <IconTablerCopy v-else class="w-3.5 h-3.5" />
+                          <span>{{ copiedCodeBlockKey === `cmd:${cmd.id}` ? 'Copied' : 'Copy' }}</span>
+                        </button>
+                      </div>
                       <pre
                         class="cmd-output"
                         :class="{ 'cmd-output-condensed': isCommandOutputCondensed(cmd) }"
@@ -95,7 +110,8 @@
                 ]"
                 @click="toggleCommandExpand(message)"
               >
-                <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(message) }">▶</span>
+                <IconTablerChevronRight class="cmd-chevron-icon transition-transform duration-200" :class="{ 'rotate-90': isCommandExpanded(message) }" />
+                <IconTablerTerminal class="cmd-terminal-icon" />
                 <code class="cmd-label">{{ message.commandExecution?.command || '(command)' }}</code>
                 <span class="cmd-status">{{ commandStatusLabel(message) }}</span>
               </button>
@@ -104,6 +120,19 @@
                 :class="{ 'cmd-output-visible': isCommandExpanded(message) }"
               >
                 <div class="cmd-output-inner">
+                  <div class="cmd-output-header">
+                    <span class="cmd-output-header-title">Output</span>
+                    <button
+                      type="button"
+                      class="cmd-output-copy-btn"
+                      :title="copiedCodeBlockKey === `cmd:${message.id}` ? 'Copied' : 'Copy output'"
+                      @click.stop="copyCodeBlock(message.commandExecution?.aggregatedOutput || '', `cmd:${message.id}`)"
+                    >
+                      <IconTablerCheck v-if="copiedCodeBlockKey === `cmd:${message.id}`" class="w-3.5 h-3.5 text-emerald-400" />
+                      <IconTablerCopy v-else class="w-3.5 h-3.5" />
+                      <span>{{ copiedCodeBlockKey === `cmd:${message.id}` ? 'Copied' : 'Copy' }}</span>
+                    </button>
+                  </div>
                   <pre
                     class="cmd-output"
                     :class="{ 'cmd-output-condensed': isCommandOutputCondensed(message) }"
@@ -130,7 +159,7 @@
                   :class="{ 'cmd-expanded': isFileChangeSummaryExpanded(message) }"
                   @click="toggleFileChangeSummary(message)"
                 >
-                  <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isFileChangeSummaryExpanded(message) }">▶</span>
+                  <IconTablerChevronRight class="cmd-chevron-icon transition-transform duration-200" :class="{ 'rotate-90': isFileChangeSummaryExpanded(message) }" />
                   <span class="file-change-summary-label">
                     {{ fileChangeSummaryLabel(readStandaloneFileChangeSummary(message)) }}
                   </span>
@@ -263,6 +292,9 @@
               </div>
 
               <article v-if="message.text.length > 0" class="message-card" :data-role="message.role">
+                <div v-if="hasAmbientContext(message)" class="message-ambient-badge">
+                  <span>🌐 In-app browser context attached</span>
+                </div>
                 <div v-if="message.isAutomationRun" class="automation-message-label">
                   <span>Sent via automation</span>
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
@@ -270,7 +302,7 @@
                 <div v-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
                   <button type="button" class="worked-separator" @click="toggleWorkedExpand(message)">
                     <span class="worked-separator-line" aria-hidden="true" />
-                    <span class="worked-chevron" :class="{ 'worked-chevron-open': isWorkedExpanded(message) }">▶</span>
+                    <IconTablerChevronRight class="worked-chevron transition-transform duration-200" :class="{ 'rotate-90': isWorkedExpanded(message) }" />
                     <p class="worked-separator-text">{{ message.text }}</p>
                     <span class="worked-separator-line" aria-hidden="true" />
                   </button>
@@ -570,7 +602,19 @@
                       </table>
                     </div>
                     <div v-else-if="block.kind === 'codeBlock'" class="message-code-block">
-                      <div v-if="block.language" class="message-code-language">{{ block.language }}</div>
+                      <div class="message-code-header">
+                        <span class="message-code-language">{{ block.language || 'code' }}</span>
+                        <button
+                          type="button"
+                          class="message-code-copy-btn"
+                          :title="copiedCodeBlockKey === `${message.id}:${blockIndex}` ? 'Copied' : 'Copy code'"
+                          @click.stop="copyCodeBlock(block.value, `${message.id}:${blockIndex}`)"
+                        >
+                          <IconTablerCheck v-if="copiedCodeBlockKey === `${message.id}:${blockIndex}`" class="w-3.5 h-3.5 text-emerald-400" />
+                          <IconTablerCopy v-else class="w-3.5 h-3.5" />
+                          <span>{{ copiedCodeBlockKey === `${message.id}:${blockIndex}` ? 'Copied' : 'Copy' }}</span>
+                        </button>
+                      </div>
                       <pre class="message-code-pre"><code class="hljs" v-html="renderCachedHighlightedCodeAsHtml(block.language, block.value)"></code></pre>
                     </div>
                     <hr v-else-if="block.kind === 'thematicBreak'" class="message-divider" />
@@ -723,7 +767,8 @@
                   :title="copiedResponseAnchorId === message.id ? 'Response copied' : 'Copy response'"
                   @click="copyResponse(message.id)"
                 >
-                  <IconTablerCopy class="icon-svg message-copy-icon" />
+                  <IconTablerCheck v-if="copiedResponseAnchorId === message.id" class="icon-svg message-copy-icon text-emerald-500" />
+                  <IconTablerCopy v-else class="icon-svg message-copy-icon" />
                   <span class="message-copy-label">{{ copiedResponseAnchorId === message.id ? 'Copied' : 'Copy' }}</span>
                 </button>
               </div>
@@ -758,11 +803,12 @@
       v-if="showJumpToLatestButton"
       type="button"
       class="jump-to-latest-button"
-      title="Jump to latest"
-      aria-label="Jump to latest output"
+      title="Jump to latest message"
+      aria-label="Jump to latest message"
       @click="jumpToLatest"
     >
-      <IconTablerArrowUp class="icon-svg jump-to-latest-icon" />
+      <IconTablerChevronDown class="jump-to-latest-icon" />
+      <span class="jump-to-latest-text">Latest</span>
     </button>
 
     <div v-if="modalImageUrl.length > 0" class="image-modal-backdrop" @click="closeImageModal">
@@ -926,9 +972,13 @@ import { copyTextToClipboard, copyTextWithSelectionFallback } from '../../utils/
 
 import IconTablerArrowBackUp from '../icons/IconTablerArrowBackUp.vue'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
+import IconTablerCheck from '../icons/IconTablerCheck.vue'
+import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
+import IconTablerChevronRight from '../icons/IconTablerChevronRight.vue'
 import IconTablerCopy from '../icons/IconTablerCopy.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'
+import IconTablerTerminal from '../icons/IconTablerTerminal.vue'
 import IconTablerX from '../icons/IconTablerX.vue'
 
 type HighlightJsModule = (typeof import('highlight.js/lib/common'))['default']
@@ -938,6 +988,41 @@ const collapsedAutoCommandIds = ref<Set<string>>(new Set())
 const expandedCommandGroupIds = ref<Set<string>>(new Set())
 const expandedWorkedIds = ref<Set<string>>(new Set())
 const expandedFileChangeSummaryIds = ref<Set<string>>(new Set())
+const copiedCodeBlockKey = ref('')
+let copiedCodeBlockTimer: ReturnType<typeof setTimeout> | null = null
+
+function copyCodeBlock(codeText: string, key: string): void {
+  const onCopied = () => {
+    copiedCodeBlockKey.value = key
+    if (copiedCodeBlockTimer) clearTimeout(copiedCodeBlockTimer)
+    copiedCodeBlockTimer = setTimeout(() => {
+      if (copiedCodeBlockKey.value === key) copiedCodeBlockKey.value = ''
+      copiedCodeBlockTimer = null
+    }, 2000)
+  }
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(codeText).then(onCopied, () => {
+      if (copyTextWithSelectionFallback(codeText)) onCopied()
+    })
+    return
+  }
+  if (copyTextWithSelectionFallback(codeText)) onCopied()
+}
+
+function cleanUserMessageDisplay(rawText: string): { displayText: string; hasBrowserContext: boolean } {
+  const browserContextMatch = rawText.match(/<in-app-browser-context[\s\S]*?<\/in-app-browser-context>\s*(?:## My request:\s*)?([\s\S]*)/i)
+  if (browserContextMatch) {
+    return {
+      displayText: browserContextMatch[1]?.trim() || rawText,
+      hasBrowserContext: true,
+    }
+  }
+  return { displayText: rawText, hasBrowserContext: false }
+}
+
+function hasAmbientContext(message: UiMessage): boolean {
+  return message.role === 'user' && /<in-app-browser-context/i.test(message.text)
+}
 const activeDiffViewerSummary = ref<TurnFileChangeSummary | null>(null)
 const activeDiffViewerChangeKey = ref('')
 const isDiffViewerFileListOpen = ref(false)
@@ -3581,7 +3666,8 @@ function getMessageBlocks(message: UiMessage): MessageBlock[] {
     messageBlockCache.set(message.id, cached)
     return cached.blocks
   }
-  const blocks = parseMessageBlocks(message.text)
+  const rawText = message.role === 'user' ? cleanUserMessageDisplay(message.text).displayText : message.text
+  const blocks = parseMessageBlocks(rawText)
   return setBoundedCacheEntry(
     messageBlockCache,
     message.id,
@@ -5066,20 +5152,28 @@ onBeforeUnmount(() => {
 }
 
 .message-inline-code {
-  @apply bg-transparent p-0 font-sans text-[1em] font-semibold text-inherit;
+  @apply font-mono text-[0.875em] bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-1.5 py-0.5 rounded-md border border-zinc-200/80 dark:border-zinc-700/70 font-medium;
   line-height: inherit;
 }
 
 .message-code-block {
-  @apply overflow-hidden rounded-xl border border-slate-200 bg-slate-950 text-slate-100;
+  @apply my-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[#0d1117] text-zinc-100 shadow-xs;
 }
 
 .message-code-language {
-  @apply border-b border-slate-800 px-3 py-2 text-[11px] font-mono uppercase tracking-[0.08em] text-slate-400;
+  @apply font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-400;
+}
+
+.message-code-header {
+  @apply flex items-center justify-between px-3.5 py-1.5 border-b border-zinc-800 bg-zinc-900/95 text-xs text-zinc-400;
+}
+
+.message-code-copy-btn {
+  @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-sans text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer;
 }
 
 .message-code-pre {
-  @apply m-0 overflow-x-auto px-3 py-3 text-[13px] leading-relaxed font-mono whitespace-pre;
+  @apply m-0 overflow-x-auto p-3.5 text-xs sm:text-[13px] leading-6 font-mono text-zinc-200 whitespace-pre;
 }
 
 .message-code-pre :deep(.hljs) {
@@ -5202,54 +5296,48 @@ onBeforeUnmount(() => {
 }
 
 .cmd-row {
-  @apply w-full flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 cursor-pointer transition text-left hover:bg-zinc-100;
+  @apply w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-800/80 cursor-pointer transition text-left hover:bg-zinc-100 dark:hover:bg-zinc-700/80;
 }
 
 .cmd-row.cmd-row-group {
-  @apply border-dashed border-zinc-300 bg-zinc-100/90 text-zinc-600;
+  @apply border border-zinc-200 dark:border-zinc-800 bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300;
 }
 
 .cmd-row.cmd-compact {
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 0.625rem;
 }
 
-.cmd-row.cmd-compact .cmd-chevron {
-  font-size: 9px;
-}
-
-.cmd-row.cmd-compact .cmd-label {
-  font-size: 0.75rem;
-}
-
 .cmd-row.cmd-compact .cmd-status {
-  max-width: 4.5rem;
+  max-width: fit-content;
   font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .cmd-row.cmd-expanded {
   @apply rounded-b-none;
 }
 
-.cmd-chevron {
-  @apply text-[10px] text-zinc-400 transition-transform duration-150 flex-shrink-0;
+.cmd-chevron-icon {
+  @apply w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0;
 }
 
-.cmd-chevron-open {
-  transform: rotate(90deg);
+.cmd-terminal-icon {
+  @apply w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0;
 }
 
 .cmd-label {
-  @apply flex-1 min-w-0 truncate text-xs font-mono text-zinc-700;
+  @apply flex-1 min-w-0 truncate text-xs font-mono text-zinc-700 dark:text-zinc-300;
 }
 
 .cmd-group-label {
-  @apply flex-1 min-w-0 truncate text-xs font-medium text-zinc-600;
+  @apply flex-1 min-w-0 truncate text-xs font-medium text-zinc-700 dark:text-zinc-300;
 }
 
 .cmd-status {
-  @apply max-w-24 truncate text-right text-[11px] font-medium flex-shrink-0;
+  @apply shrink-0 text-right text-[11px] font-medium whitespace-nowrap;
+  max-width: fit-content;
 }
 
 .cmd-status-running .cmd-status {
@@ -5265,17 +5353,17 @@ onBeforeUnmount(() => {
 }
 
 .cmd-output-wrap {
-  @apply rounded-b-lg bg-zinc-900;
+  @apply rounded-b-xl bg-[#0d1117] text-zinc-200 overflow-hidden;
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 300ms ease-out, border-color 300ms ease-out;
+  transition: grid-template-rows 250ms ease-out, border-color 250ms ease-out;
   border: 1px solid transparent;
   border-top: none;
 }
 
 .cmd-output-wrap.cmd-output-visible {
   grid-template-rows: 1fr;
-  border-color: #e4e4e7;
+  border-color: #30363d;
 }
 
 .cmd-group-wrap {
@@ -5295,10 +5383,24 @@ onBeforeUnmount(() => {
 .cmd-output-inner {
   overflow: hidden;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cmd-output-header {
+  @apply flex items-center justify-between px-3 py-1.5 border-b border-zinc-800 bg-zinc-900/90 text-[11px] font-mono text-zinc-400;
+}
+
+.cmd-output-header-title {
+  @apply font-semibold uppercase tracking-wider text-[10px] text-zinc-500;
+}
+
+.cmd-output-copy-btn {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition cursor-pointer;
 }
 
 .cmd-output {
-  @apply m-0 px-3 py-2 text-xs font-mono text-zinc-200 whitespace-pre-wrap break-words max-h-60 overflow-y-auto;
+  @apply m-0 px-3.5 py-2.5 text-xs font-mono text-zinc-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto leading-5;
 }
 
 .cmd-output.cmd-output-condensed {

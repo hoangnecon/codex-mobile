@@ -2332,7 +2332,7 @@ watch(
 }
 
 .thread-composer-input {
-  @apply w-full min-w-0 min-h-10 sm:min-h-11 max-h-40 rounded-xl border-0 bg-transparent px-1 py-2 pr-10 text-sm text-zinc-900 outline-none transition resize-none overflow-y-auto;
+  @apply w-full min-w-0 min-h-10 sm:min-h-11 max-h-40 rounded-xl border-0 bg-transparent px-1 py-2 pr-10 text-base sm:text-sm text-zinc-900 outline-none transition resize-none overflow-y-auto;
 }
 
 .thread-composer-input-wrap--expanded .thread-composer-input {
@@ -2445,7 +2445,7 @@ watch(
 }
 
 .thread-composer-control {
-  @apply shrink-1 min-w-0;
+  @apply shrink-1 min-w-0 max-w-[130px] sm:max-w-[240px];
 }
 
 .thread-composer-control :deep(.composer-dropdown-value) {
@@ -2487,7 +2487,7 @@ watch(
 
 
 .thread-composer-actions {
-  @apply ml-auto flex min-w-0 items-center gap-2;
+  @apply ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2;
 }
 
 .thread-composer-actions--recording {
