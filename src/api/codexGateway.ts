@@ -1517,20 +1517,16 @@ export async function resumeThread(threadId: string): Promise<ResumedThread> {
     try {
       payload = await callRpc<ThreadResumeResponse>('thread/resume', { threadId })
     } catch (error) {
-      if (isThreadOwnedByAnotherWriter(error)) {
+      try {
         payload = await callRpc<ThreadReadResponse>('thread/read', { threadId, includeTurns: true })
-      } else {
-        if (!isMissingLegacyCustomEndpointProvider(error)) throw error
+      } catch (readError) {
+        if (!isMissingLegacyCustomEndpointProvider(error)) throw readError
         try {
           payload = await callRpc<ThreadResumeResponse>('thread/resume', {
             threadId,
-            // Codex 0.147 removed the legacy custom_endpoint provider name. The
-            // top-level openai_base_url configuration continues to route OpenAI
-            // requests to the configured compatible endpoint.
             modelProvider: 'openai',
           })
         } catch (retryError) {
-          if (!isThreadOwnedByAnotherWriter(retryError)) throw retryError
           payload = await callRpc<ThreadReadResponse>('thread/read', { threadId, includeTurns: true })
         }
       }

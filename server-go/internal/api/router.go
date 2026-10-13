@@ -238,6 +238,24 @@ func (r *Router) handleRPC(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// For thread/read and thread/resume, trim turns to the latest 10 turns to keep payload lightweight and snappy
+	if payload.Method == "thread/read" || payload.Method == "thread/resume" {
+		var threadResp map[string]any
+		if err := json.Unmarshal(resp.Result, &threadResp); err == nil {
+			if thread, ok := threadResp["thread"].(map[string]any); ok {
+				if turns, ok := thread["turns"].([]any); ok && len(turns) > 10 {
+					startIndex := len(turns) - 10
+					thread["turns"] = turns[startIndex:]
+					threadResp["threadTurnStartIndex"] = startIndex
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"result": threadResp,
+					})
+					return
+				}
+			}
+		}
+	}
+
 	// For thread/list, deduplicate threads with the same ID, keeping the latest updatedAt
 	if payload.Method == "thread/list" {
 		var listResp struct {

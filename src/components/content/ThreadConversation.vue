@@ -1,6 +1,9 @@
 <template>
   <section class="conversation-root" @contextmenu.capture="onConversationContextMenu">
-    <p v-if="isLoading" class="conversation-loading">Loading messages...</p>
+    <div v-if="isLoading && messages.length === 0" class="conversation-loading-wrap">
+      <div class="conversation-spinner"></div>
+      <p class="conversation-loading">Loading messages...</p>
+    </div>
 
     <p
       v-else-if="messages.length === 0 && pendingRequests.length === 0 && !liveOverlay"

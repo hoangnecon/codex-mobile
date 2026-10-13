@@ -2,6 +2,7 @@ package appserver
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -189,34 +190,42 @@ func (b *Bridge) waitLoop() {
 }
 
 func (b *Bridge) readLoop(r io.Reader) {
-	scanner := bufio.NewScanner(r)
-	// Allocate 16MB max token capacity to handle large turn contexts or tool outputs
-	buf := make([]byte, 64*1024)
-	scanner.Buffer(buf, 16*1024*1024)
+	reader := bufio.NewReaderSize(r, 1024*1024)
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			trimmed := bytes.TrimRight(line, "\r\n")
+			if len(trimmed) > 0 {
+				b.handleLine(trimmed)
+			}
 		}
 
-		b.handleLine(line)
-	}
-
-	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
-		log.Printf("[appserver] stdout scanner error: %v", err)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Printf("[appserver] stdout reader error: %v", err)
+			}
+			break
+		}
 	}
 }
 
 func (b *Bridge) handleLine(line []byte) {
+	if len(line) < 500 {
+		log.Printf("[appserver] inbound line: %s", string(line))
+	} else {
+		log.Printf("[appserver] inbound line (len=%d): %s...", len(line), string(line[:200]))
+	}
 	var msg rpc.InboundMessage
 	if err := json.Unmarshal(line, &msg); err != nil {
+		log.Printf("[appserver] unmarshal error: %v", err)
 		return
 	}
 
 	// Case 1: Inbound response to one of our requests
 	if msg.IsResponse() {
 		idVal, ok := toInt64(msg.ID)
+		log.Printf("[appserver] response matched: id=%v (ok=%v, idVal=%d)", msg.ID, ok, idVal)
 		if ok {
 			b.pendingMu.Lock()
 			ch, exists := b.pending[idVal]
@@ -341,6 +350,7 @@ func (b *Bridge) EnsureInitialized(ctx context.Context) error {
 
 func (b *Bridge) callInternal(ctx context.Context, method string, params any) (*rpc.Response, error) {
 	id := b.nextID.Add(1)
+	log.Printf("[appserver] send request: id=%d method=%s", id, method)
 	req, err := rpc.NewRequest(id, method, params)
 	if err != nil {
 		return nil, fmt.Errorf("create request error: %w", err)
